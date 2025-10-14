@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Canvas</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    body {
+      background: hsl(0, 70%, 50%);
+      transition: background 0.05s linear;
+    }
+  </style>
+</head>
+<body>
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let isMouseDown = false;
+    let osc = null, gain = null;
+
+    function startTone(freq) {
+      osc = audioCtx.createOscillator();
+      gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+    }
+
+    function stopTone() {
+      if (osc) {
+        osc.stop();
+        osc.disconnect();
+        gain.disconnect();
+        osc = null;
+        gain = null;
+      }
+    }
+
+    window.addEventListener('mousemove', e => {
+      const hue = (e.clientX / width) * 360;
+      const light = 30 + (e.clientY / height) * 40;
+      document.body.style.backgroundColor = `hsl(${hue}, 70%, ${light}%)`;
+      if (isMouseDown && osc) {
+        const freq = 100 + (e.clientY / height) * 1000;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      }
+    });
+
+    window.addEventListener('mousedown', e => {
+      isMouseDown = true;
+      const freq = 100 + (e.clientY / height) * 1000;
+      startTone(freq);
+    });
+
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      stopTone();
+    });
+
+    window.addEventListener('resize', () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>
