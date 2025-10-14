@@ -1,112 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sound Canvas</title>
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      touch-action: none; /* prevents scrolling on touch devices */
-      cursor: crosshair;
-    }
-    body {
-      background: hsl(0, 70%, 50%);
-      transition: background 0.05s linear;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Canvas</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none; /* prevents scrolling on touch devices */
+    cursor: crosshair;
+  }
+  body {
+    background: hsl(0, 70%, 50%);
+    transition: background 0.05s linear;
+  }
+</style>
 </head>
 <body>
-  <script>
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    let isPlaying = false;
-    let osc = null, gain = null;
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let width = window.innerWidth;
+let height = window.innerHeight;
+let isPlaying = false;
+let osc = null, gain = null;
 
-    function startTone(freq) {
-      osc = audioCtx.createOscillator();
-      gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-    }
+function startTone(freq) {
+  osc = audioCtx.createOscillator();
+  gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+}
 
-    function stopTone() {
-      if (osc) {
-        osc.stop();
-        osc.disconnect();
-        gain.disconnect();
-        osc = null;
-        gain = null;
-      }
-    }
+function stopTone() {
+  if (osc) {
+    osc.stop();
+    osc.disconnect();
+    gain.disconnect();
+    osc = null;
+    gain = null;
+  }
+}
 
-    function updateColorAndTone(x, y) {
-      const hue = (x / width) * 360;
-      const light = 30 + (y / height) * 40;
-      document.body.style.backgroundColor = `hsl(${hue}, 70%, ${light}%)`;
-      if (isPlaying && osc) {
-        const freq = 100 + (y / height) * 1000;
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      }
-    }
+function updateColorAndTone(x, y) {
+  const hue = (x / width) * 360;
+  const light = 30 + (y / height) * 40;
+  document.body.style.backgroundColor = `hsl(${hue}, 70%, ${light}%)`;
+  if (isPlaying && osc) {
+    const freq = 100 + (y / height) * 1000;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  }
+}
 
-    function getPos(e) {
-      if (e.touches && e.touches[0]) {
-        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      }
-      return { x: e.clientX, y: e.clientY };
-    }
+function getPos(e) {
+  if (e.touches && e.touches[0]) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
 
-    function initInteraction(x, y) {
-      audioCtx.resume(); // ensure AudioContext is running
-      const freq = 100 + (y / height) * 1000;
-      startTone(freq);
-      isPlaying = true;
-    }
+function initInteraction(x, y) {
+  const freq = 100 + (y / height) * 1000;
+  startTone(freq);
+  isPlaying = true;
+}
 
-    function endInteraction() {
-      isPlaying = false;
-      stopTone();
-    }
+function handleTouchStart(e) {
+  e.preventDefault();
+  const pos = getPos(e);
+  audioCtx.resume().then(() => {
+    initInteraction(pos.x, pos.y);
+  });
+}
 
-    // Mouse events
-    window.addEventListener('mousemove', e => {
-      const pos = getPos(e);
-      updateColorAndTone(pos.x, pos.y);
-    });
+// Mouse events
+window.addEventListener('mousemove', e => {
+  const pos = getPos(e);
+  updateColorAndTone(pos.x, pos.y);
+});
+window.addEventListener('mousedown', e => {
+  const pos = getPos(e);
+  audioCtx.resume().then(() => {
+    initInteraction(pos.x, pos.y);
+  });
+});
+window.addEventListener('mouseup', () => {
+  isPlaying = false;
+  stopTone();
+});
 
-    window.addEventListener('mousedown', e => {
-      const pos = getPos(e);
-      initInteraction(pos.x, pos.y);
-    });
+// Touch events
+window.addEventListener('touchstart', handleTouchStart, { passive: false });
+window.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const pos = getPos(e);
+  updateColorAndTone(pos.x, pos.y);
+}, { passive: false });
+window.addEventListener('touchend', () => {
+  isPlaying = false;
+  stopTone();
+});
 
-    window.addEventListener('mouseup', endInteraction);
-
-    // Touch events
-    window.addEventListener('touchstart', e => {
-      const pos = getPos(e);
-      initInteraction(pos.x, pos.y);
-    }, { passive: false });
-
-    window.addEventListener('touchmove', e => {
-      e.preventDefault();
-      const pos = getPos(e);
-      updateColorAndTone(pos.x, pos.y);
-    }, { passive: false });
-
-    window.addEventListener('touchend', endInteraction);
-
-    window.addEventListener('resize', () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-    });
-  </script>
+window.addEventListener('resize', () => {
+  width = window.innerWidth;
+  height = window.innerHeight;
+});
+</script>
 </body>
 </html>
