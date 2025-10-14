@@ -9,6 +9,7 @@
       margin: 0;
       height: 100%;
       overflow: hidden;
+      touch-action: none; /* prevents scrolling on touch devices */
       cursor: crosshair;
     }
     body {
@@ -22,7 +23,7 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let width = window.innerWidth;
     let height = window.innerHeight;
-    let isMouseDown = false;
+    let isPlaying = false;
     let osc = null, gain = null;
 
     function startTone(freq) {
@@ -46,26 +47,61 @@
       }
     }
 
-    window.addEventListener('mousemove', e => {
-      const hue = (e.clientX / width) * 360;
-      const light = 30 + (e.clientY / height) * 40;
+    function updateColorAndTone(x, y) {
+      const hue = (x / width) * 360;
+      const light = 30 + (y / height) * 40;
       document.body.style.backgroundColor = `hsl(${hue}, 70%, ${light}%)`;
-      if (isMouseDown && osc) {
-        const freq = 100 + (e.clientY / height) * 1000;
+      if (isPlaying && osc) {
+        const freq = 100 + (y / height) * 1000;
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
       }
+    }
+
+    function getPos(e) {
+      if (e.touches && e.touches[0]) {
+        return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function initInteraction(x, y) {
+      audioCtx.resume(); // ensure AudioContext is running
+      const freq = 100 + (y / height) * 1000;
+      startTone(freq);
+      isPlaying = true;
+    }
+
+    function endInteraction() {
+      isPlaying = false;
+      stopTone();
+    }
+
+    // Mouse events
+    window.addEventListener('mousemove', e => {
+      const pos = getPos(e);
+      updateColorAndTone(pos.x, pos.y);
     });
 
     window.addEventListener('mousedown', e => {
-      isMouseDown = true;
-      const freq = 100 + (e.clientY / height) * 1000;
-      startTone(freq);
+      const pos = getPos(e);
+      initInteraction(pos.x, pos.y);
     });
 
-    window.addEventListener('mouseup', () => {
-      isMouseDown = false;
-      stopTone();
-    });
+    window.addEventListener('mouseup', endInteraction);
+
+    // Touch events
+    window.addEventListener('touchstart', e => {
+      const pos = getPos(e);
+      initInteraction(pos.x, pos.y);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const pos = getPos(e);
+      updateColorAndTone(pos.x, pos.y);
+    }, { passive: false });
+
+    window.addEventListener('touchend', endInteraction);
 
     window.addEventListener('resize', () => {
       width = window.innerWidth;
